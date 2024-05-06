@@ -152,6 +152,17 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# Own Folder
+local_env/
+input_videos/
+output_videos/
+runs/
+training/
+
+# YOLO Models
+*.pt
+
+
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
