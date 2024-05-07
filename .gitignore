@@ -152,12 +152,17 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+#Own files
+*.pkl
+*.jpg
+
 # Own Folder
 local_env/
 input_videos/
 output_videos/
 runs/
 training/
+tracks/
 
 # YOLO Models
 *.pt
