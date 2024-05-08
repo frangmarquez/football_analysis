@@ -3,6 +3,7 @@ import pickle
 import sys
 import cv2
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 from ultralytics import YOLO
 import supervision as sv
@@ -14,6 +15,18 @@ class Tracker:
     def __init__(self,model_path):
         self.model = YOLO(model_path)
         self.tracker = sv.ByteTrack()
+
+    def interpolate_ball_positions(self,ball_tracking):
+        ball_positions = [x.get(1,{}).get('bbox',[]) for x in ball_tracking]
+        df_ball_positions = pd.DataFrame(data=ball_positions,columns=['x1','y1','x2','y2'])
+
+        # Interpolations of missing values
+        df_ball_positions = df_ball_positions.interpolate()
+        df_ball_positions = df_ball_positions.bfill()
+
+        ball_positions = [{1:{'bbox':[x1,y1,x2,y2]}} for x1,y1,x2,y2 in df_ball_positions.to_numpy().tolist()]
+
+        return ball_positions
 
     def detect_frames(self,frames):
         batch_size = 20
@@ -142,8 +155,25 @@ class Tracker:
         
         return frame
 
+    def draw_ball_control(self,frame,frame_num,team_with_possesion):
 
-    def draw_tracking_ids(self,video_frames,tracks):
+        # Draw a translucid rectangle in the right upper corner
+        overlay = frame.copy()
+        cv2.rectangle(overlay,(1350,850),(1900,970), (255,255,255), -1 )
+        alpha = 0.4
+        cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
+
+        # Draw ball control
+        team_ball_control_till_frame = team_with_possesion[:frame_num+1]
+        team_1_control = team_ball_control_till_frame[team_ball_control_till_frame==1].shape[0] / team_ball_control_till_frame.shape[0]
+        team_2_control = team_ball_control_till_frame[team_ball_control_till_frame==2].shape[0] / team_ball_control_till_frame.shape[0]
+
+        cv2.putText(frame,f"Team 1 Control: {team_1_control*100:.2f}%",(1400,900),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,255),2)
+        cv2.putText(frame,f"Team 2 Control: {team_2_control*100:.2f}%",(1400,950),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,255),2)
+
+        return frame
+
+    def draw_output(self,video_frames,tracks,team_with_possesion):
         output_frames = []
         for frame_num,frame in tqdm(enumerate(video_frames)):
             frame = frame.copy()
@@ -156,11 +186,17 @@ class Tracker:
             for track_id,track in player_dict.items():
                 frame = self.draw_ellipse(frame,track["bbox"],track["team_color"],track_id)
 
+                if track.get('possesion',False):
+                    frame = self.draw_triangle(frame,track["bbox"],(0,0,255)) 
+
             for _, track in referee_dict.items():
                 frame = self.draw_ellipse(frame,track["bbox"],(0,255,255))
 
             for _, track in ball.items():
                 frame = self.draw_triangle(frame,track["bbox"],(0,255,0))
+
+            # Draw team's possession
+            frame = self.draw_ball_control(frame,frame_num,team_with_possesion)
 
             output_frames.append(frame)
         
