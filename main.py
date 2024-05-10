@@ -4,6 +4,7 @@ from utils import read_video,save_video
 from trackers import Tracker
 from team_assigner import TeamAssigner
 from posession_asigner import PlayerAssigner
+from camera_movement import CameraMovementEstimator
 
 def main():
 
@@ -16,6 +17,10 @@ def main():
                                        tracks_path='tracks/tracks_stub.pkl')
     
     tracks['ball'] = tracker.interpolate_ball_positions(tracks['ball'])
+
+    # Estimate camera movement
+    camera_estimator = CameraMovementEstimator(video_frames[0])
+    camera_movement_estimation = camera_estimator.getCameraMovement(video_frames, read_from_stub=True, stub_path='./tracks/camera_movement.pkl')
              
     # Assign teams to players
     team_assigner = TeamAssigner()
@@ -46,6 +51,9 @@ def main():
 
     # Draw outputs (tracks)
     output_video_frames = tracker.draw_output(video_frames,tracks,team_with_possesion)
+
+    # Draw camera movement
+    output_video_frames = camera_estimator.draw_camera_movement(output_video_frames, camera_movement_estimation)
 
     # Then we save the video
     save_video(output_video_frames,'output_videos/output_video.avi')
